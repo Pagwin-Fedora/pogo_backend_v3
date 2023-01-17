@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 sqlx = {version = "0.6", features = ["runtime-tokio-rustls", "postgres","uuid"]}
 serde = {version = "1.0"}
-rocket = {version = "0.4"}
+warp = {version = "0.3"}
 tokio = {version = "1.24", features = ["full"]}
 lazy_static = "*"
 uuid = {version = "1.2"}
