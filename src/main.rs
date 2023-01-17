@@ -14,21 +14,19 @@ lazy_static!{
 }
 
 fn main() {
-    let x:Option<u8> = Some(3);
-    let y:<Option::<u8> as IntoIterator>::Item = x.unwrap();
-    //RUNTIME.block_on(async {
-    //    let mut conn = sqlx::postgres::PgConnectOptions::new()
-    //        .host("localhost")
-    //        .username("sqlx")
-    //        //once I'm actually getting to work I should probably do this with an env var or a key
-    //        //store of some kind so I'm not just yeeting the password into the binary
-    //        .password(include_str!("postgres_passwd"))
-    //        .port(5432)
-    //        .database("sqlx")
-    //        .application_name("sqlx_test")
-    //        .connect().await
-    //        .expect("Connection failed");
-    //    sqlx::query!("SELECT asdf as id").execute(&mut conn).await.unwrap();
-    //});
+    RUNTIME.block_on(async {
+        let mut conn = sqlx::postgres::PgConnectOptions::new()
+            .host("localhost")
+            .username("sqlx")
+            //once I'm actually getting to work I should probably do this with an env var or a key
+            //store of some kind so I'm not just yeeting the password into the binary
+            .password(include_str!("postgres_passwd"))
+            .port(5432)
+            .database("sqlx")
+            .application_name("sqlx_test")
+            .connect().await
+            .expect("Connection failed");
+        sqlx::query!("SELECT asdf as id").execute(&mut conn).await.unwrap();
+    });
     //println!("Hello, world!");
 }
