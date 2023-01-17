@@ -3,7 +3,9 @@ extern crate tokio;
 extern crate rocket;
 extern crate sqlx;
 extern crate lazy_static;
+extern crate uuid;
 mod schema;
+mod sql_impl;
 
 use sqlx::prelude::*;
 use lazy_static::lazy_static;
@@ -13,6 +15,19 @@ lazy_static!{
     static ref RUNTIME:Runtime = Runtime::new().expect("Async runtime creation failed");
 }
 
+struct tmp{
+    id:Option<uuid::Uuid>
+}
+impl From<tmp> for Option<uuid::Uuid>{
+    fn from(t:tmp)->Self{
+        t.id
+    }
+}
+impl From<Option<uuid::Uuid>> for tmp {
+    fn from(id:Option<uuid::Uuid>)->Self{
+        tmp{id}
+    }
+}
 fn main() {
     RUNTIME.block_on(async {
         let mut conn = sqlx::postgres::PgConnectOptions::new()
@@ -26,7 +41,13 @@ fn main() {
             .application_name("sqlx_test")
             .connect().await
             .expect("Connection failed");
-        sqlx::query!("SELECT asdf as id").execute(&mut conn).await.unwrap();
+
+        let obj = sqlx::query_as!(tmp,"SELECT id FROM pogo_tasks WHERE id='67d17a45-7b99-46be-ac85-338e2c8f0d4d';")
+            .fetch_optional(&mut conn).await
+            .unwrap_or(None)
+            .unwrap_or(Some(uuid::Uuid::from_u128(0)).into());
+        sql::query!("UPDATE")
+        //sqlx::query!("SELECT asdf as id").execute(&mut conn).await.unwrap();
     });
     //println!("Hello, world!");
 }

@@ -4,15 +4,16 @@ use std::rc;
 //whatever
 #[derive(Clone)]
 pub struct TaskV1{
-    title:String,
-    body:String,
+    pub id: u128,
+    pub title:String,
+    pub body:String,
     /// connected files/media/etc should be URLs
-    connected:Vec<String>,
+    pub connected:Vec<String>,
     //note our parents are the only things holding references to us so if they all die we die
     /// Parent nodes
-    parents:Vec<rc::Weak<TaskV1>>,
+    pub parents:Vec<rc::Weak<TaskV1>>,
     /// Child nodes
-    children:Vec<rc::Rc<TaskV1>>
+    pub children:Vec<rc::Rc<TaskV1>>
 }
 
 pub enum TaskVersioning{V1(TaskV1)}

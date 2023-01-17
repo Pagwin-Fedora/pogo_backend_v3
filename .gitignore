@@ -1,2 +1,3 @@
 /target
 src/postgres_passwd
+./env
