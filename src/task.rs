@@ -1,24 +1,27 @@
-use std::rc;
-
+use std::sync;
+use uuid::Uuid;
+use async_trait::async_trait;
 //Not sure if using rc is the best choice atm or if I want to have the Rcs hold onto refcells but
 //whatever
 #[derive(Clone)]
 pub struct TaskV1{
-    pub id: u128,
+    pub id: Uuid,
     pub title:String,
     pub body:String,
+    pub progress: f32,
     /// connected files/media/etc should be URLs
-    pub connected:Vec<String>,
+    pub media:Vec<String>,
     //note our parents are the only things holding references to us so if they all die we die
     /// Parent nodes
-    pub parents:Vec<rc::Weak<TaskV1>>,
+    pub parents:Vec<sync::Weak<TaskV1>>,
     /// Child nodes
-    pub children:Vec<rc::Rc<TaskV1>>
+    pub children:Vec<sync::Arc<TaskV1>>
 }
 
 pub enum TaskVersioning{V1(TaskV1)}
 
 /// Trait that any method of encoding and decoding tasks needs to implement
+#[async_trait]
 pub trait TaskEncoder{
     /// The type that can be gotten from a call to either provide_identifiers or
     /// encode_task and if a value of it is gotten that way then should be usable with decode_task
@@ -30,7 +33,7 @@ pub trait TaskEncoder{
     type EncodingError;
     type DecodingError;
     type IdentityFetchError;
-    fn encode_task<'a>(&mut self, task:TaskVersioning)->Result<Self::Identifier,Self::EncodingError>;
-    fn decode_task<'a>(&mut self,id:Self::Identifier)->Result<TaskVersioning,Self::DecodingError>;
-    fn provide_identifiers<'a>(&mut self)->Result<Vec<Self::Identifier>,Self::IdentityFetchError>;
+    async fn encode_task(&mut self, task:TaskVersioning)->Result<Self::Identifier,Self::EncodingError>;
+    async fn decode_task(&mut self,id:Self::Identifier)->Result<TaskVersioning,Self::DecodingError>;
+    async fn provide_identifiers(&mut self)->Result<Vec<Self::Identifier>,Self::IdentityFetchError>;
 }

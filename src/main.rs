@@ -4,17 +4,17 @@ extern crate warp;
 extern crate sqlx;
 extern crate lazy_static;
 extern crate uuid;
-mod schema;
+extern crate async_trait;
+mod task;
 mod sql_impl;
+mod runtime;
 
 use sqlx::prelude::*;
 use lazy_static::lazy_static;
 use tokio::runtime::Runtime;
 
-lazy_static!{
-    static ref RUNTIME:Runtime = Runtime::new().expect("Async runtime creation failed");
-}
 
+#[derive(sqlx::Encode,sqlx::Decode)]
 struct tmp{
     id:Option<uuid::Uuid>
 }
@@ -35,8 +35,8 @@ impl From<sqlx::Error> for MyErrors{
     }
 }
 fn main() {
-    let _:Result<(),MyErrors> = RUNTIME.block_on(async {
-        let mut conn = sqlx::postgres::PgConnectOptions::new()
+    let _:Result<(),MyErrors> = runtime::get_handle().block_on(async {
+        let db_opts = sqlx::postgres::PgConnectOptions::new()
             .host("localhost")
             .username("sqlx")
             //once I'm actually getting to work I should probably do this with an env var or a key
@@ -44,15 +44,15 @@ fn main() {
             .password(include_str!("postgres_passwd"))
             .port(5432)
             .database("sqlx")
-            .application_name("sqlx_test")
-            .connect().await
-            .expect("Connection failed");
+            .application_name("pogo");
+        let conn = sqlx::pool::PoolOptions::new()
+            .connect_with(db_opts).await?;
 
         let obj = sqlx::query_as!(tmp,"SELECT id FROM pogo_tasks WHERE id='67d17a45-7b99-46be-ac85-338e2c8f0d4d';")
-            .fetch_optional(&mut conn).await?
+            .fetch_optional(&conn).await?
             .unwrap_or(Some(uuid::Uuid::from_u128(0)).into());
 
-        sqlx::query!("UPDATE pogo_tasks SET id=$1,title='hello', body='sqlx' WHERE id=$1",obj.id).execute(&mut conn).await?;
+        sqlx::query!("UPDATE pogo_tasks SET id=$1,title='hello', body='sqlx' WHERE id=$1",obj.id).execute(&conn).await?;
         //sqlx::query!("SELECT asdf as id").execute(&mut conn).await.unwrap();
         Ok(())
     });

@@ -11,7 +11,8 @@ serde = {version = "1.0"}
 warp = {version = "0.3"}
 tokio = {version = "1.24", features = ["full"]}
 lazy_static = "*"
-uuid = {version = "1.2"}
+uuid = {version = "1.2", features = ["serde"]}
+async-trait = "0.1"
 
 # sqlx reccomends this for faster check/debug builds
 [profile.dev.package.sqlx-macros]
