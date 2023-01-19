@@ -85,14 +85,14 @@ impl TaskEncoder for sqlx::Pool<sqlx::postgres::Postgres> {
         }
     }
     async fn decode_task(&mut self, id:Uuid, login:&str)->Result<Option<TaskVersioning>,sqlx::Error>{
-
-        let partial_task = pg_fetch_task_frag_v1(self as &Self,id).await?;
-
+        
+        let partial_task = pg_fetch_task_frag_v1(self as &Self,id,login).await?;
         let media = pg_fetch_media_v1(self as &Self,id).await?;
 
         let children = pg_fetch_children_v1(self as &Self,id).await?;
 
         let is_root = pg_fetch_rooted_v1(self as &Self,id).await?;
+
         Ok(partial_task.map(move |TaskV1Fragment{id,title,body,progress}|{
             TaskVersioning::V1(TaskV1{
                 id,
@@ -106,7 +106,7 @@ impl TaskEncoder for sqlx::Pool<sqlx::postgres::Postgres> {
         }))
     }
     async fn provide_identifiers(&mut self, login:&str)->Result<Vec<Uuid>,sqlx::Error>{
-        query_as!(Id,"SELECT id FROM pogo_tasks")
+        query_as!(Id,"SELECT id FROM pogo_tasks WHERE login=$1",login)
             .fetch_all(self as &Self).await
             .map(|v|v.into_iter().map(Uuid::from).collect())
     }
@@ -136,12 +136,14 @@ pub async fn pg_fetch_children_v1<'a,E:PgExecutor<'a>+Copy>(exec:E, id:Uuid)->Re
         .collect();
     Ok(children)
 }
-async fn pg_fetch_task_frag_v1<'a, E:PgExecutor<'a>>(exec:E, id:Uuid)->Result<Option<TaskV1Fragment>, sqlx::Error>{
+async fn pg_fetch_task_frag_v1<'a, E:PgExecutor<'a>>(exec:E, id:Uuid, login:&str)->Result<Option<TaskV1Fragment>, sqlx::Error>{
     Ok(query!(r#"SELECT * FROM pogo_tasks
-                                WHERE id=$1 
+                                WHERE id=$1
+                                AND login=$2
                                 AND title IS NOT NULL 
                                 AND body IS NOT NULL 
-                                AND progress IS NOT NULL"#, id).fetch_optional(exec).await?.map(|s|{
+                                AND progress IS NOT NULL"#, id, login).fetch_optional(exec).await?
+       .map(|s|{
             // unsafe is for unwrap_unchecked which is fine because the SQL query already does
             // the checking for us
             unsafe {
