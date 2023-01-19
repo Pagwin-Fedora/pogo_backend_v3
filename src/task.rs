@@ -11,11 +11,9 @@ pub struct TaskV1{
     pub progress: f32,
     /// connected files/media/etc should be URLs
     pub media:Vec<String>,
-    //note our parents are the only things holding references to us so if they all die we die
-    /// Parent nodes
-    pub parents:Vec<sync::Weak<TaskV1>>,
     /// Child nodes
-    pub children:Vec<sync::Arc<TaskV1>>
+    pub children:Vec<Uuid>,
+    pub is_root:bool,
 }
 
 pub enum TaskVersioning{V1(TaskV1)}
@@ -34,6 +32,6 @@ pub trait TaskEncoder{
     type DecodingError;
     type IdentityFetchError;
     async fn encode_task(&mut self, task:TaskVersioning)->Result<Self::Identifier,Self::EncodingError>;
-    async fn decode_task(&mut self,id:Self::Identifier)->Result<TaskVersioning,Self::DecodingError>;
+    async fn decode_task(&mut self,id:Self::Identifier)->Result<Option<TaskVersioning>,Self::DecodingError>;
     async fn provide_identifiers(&mut self)->Result<Vec<Self::Identifier>,Self::IdentityFetchError>;
 }
