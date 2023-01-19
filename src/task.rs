@@ -31,7 +31,8 @@ pub trait TaskEncoder{
     type EncodingError;
     type DecodingError;
     type IdentityFetchError;
-    async fn encode_task(&mut self, task:TaskVersioning)->Result<Self::Identifier,Self::EncodingError>;
-    async fn decode_task(&mut self,id:Self::Identifier)->Result<Option<TaskVersioning>,Self::DecodingError>;
-    async fn provide_identifiers(&mut self)->Result<Vec<Self::Identifier>,Self::IdentityFetchError>;
+    async fn encode_task(&mut self, task:TaskVersioning, login:&str)->Result<Self::Identifier,Self::EncodingError>;
+    async fn decode_task(&mut self,id:Self::Identifier, login:&str)->Result<Option<TaskVersioning>,Self::DecodingError>;
+    async fn provide_identifiers(&mut self, login:&str)->Result<Vec<Self::Identifier>,Self::IdentityFetchError>;
+    async fn relate_identifiers(&mut self, parent:Self::Identifier, child:Self::Identifier)->Result<(),sqlx::Error>;
 }

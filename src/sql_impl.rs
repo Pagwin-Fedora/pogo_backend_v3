@@ -3,7 +3,6 @@ use sqlx::{query,query_as};
 use sqlx::postgres::PgExecutor;
 use uuid::Uuid;
 use async_trait::async_trait;
-use std::sync;
 
 struct TaskV1Fragment{
     id: Uuid,
@@ -43,41 +42,49 @@ impl TaskEncoder for sqlx::Pool<sqlx::postgres::Postgres> {
     type DecodingError = sqlx::Error;
     type EncodingError = sqlx::Error;
     type IdentityFetchError = sqlx::Error;
-    async fn encode_task(&mut self, task:TaskVersioning)->Result<Self::Identifier,Self::EncodingError>{
+    async fn encode_task(&mut self, task:TaskVersioning, login:&str)->Result<Self::Identifier,Self::EncodingError>{
         match task {
             TaskVersioning::V1(task)=>{
                 let TaskV1Fragment {id,title,body,progress} = (&task).into();
                 let mut transaction = self.begin().await?;
+
+                // updates the task fragment in the tasks table or creates a new task fragment if
+                // it doesn't already exist
                 query!("DELETE FROM pogo_tasks WHERE id=$1",id).execute(&mut transaction).await?;
                 
                 query!("INSERT INTO pogo_tasks VALUES ($1,$2,$3,$4)", id,title,body,progress).execute(&mut transaction).await?;
 
 
-
+                // check for all media attached to the task object to see what is and isn't already
+                // located within the resources table
                 let media = task.media;
                 let media = {
                     let mut new_media = Vec::new();
                     for med in media {
-                        if query!("SELECT FROM pogo_resources WHERE location=$1",med).fetch_optional(self as &Self).await?.is_none(){
+                        if query!("SELECT FROM pogo_resources WHERE location=$1",med).fetch_optional(&mut transaction).await?.is_none(){
                             new_media.push(med);
                         }
                     }
                     new_media
                 };
-
+                
+                // insert all media that aren't already within the database and get a list of all
+                // their ids
                 let mut ids:Vec<Uuid> = Vec::new();
                 for med in media{
-                    ids.push(query_as!(Id,"INSERT INTO pogo_resources (location) VALUES ($1) RETURNING id",med).fetch_one(self as &Self).await?.into());
+                    ids.push(query_as!(Id,"INSERT INTO pogo_resources (location) VALUES ($1) RETURNING id",med).fetch_one(&mut transaction).await?.into());
                 }
+
+                // specify that all the new resource ids are attached to the task
                 for resource_id in ids {
-                    query!("INSERT INTO pogo_resource_mapping VALUES ($1,$2)", task.id, resource_id).execute(self as &Self).await?;
+                    query!("INSERT INTO pogo_resource_mapping VALUES ($1,$2)", task.id, resource_id).execute(&mut transaction).await?;
                 }
                 transaction.commit().await?;
                 Ok(id)
             }
         }
     }
-    async fn decode_task(&mut self, id:Uuid)->Result<Option<TaskVersioning>,sqlx::Error>{
+    async fn decode_task(&mut self, id:Uuid, login:&str)->Result<Option<TaskVersioning>,sqlx::Error>{
 
         let partial_task = pg_fetch_task_frag_v1(self as &Self,id).await?;
 
@@ -98,10 +105,14 @@ impl TaskEncoder for sqlx::Pool<sqlx::postgres::Postgres> {
             })
         }))
     }
-    async fn provide_identifiers(&mut self)->Result<Vec<Uuid>,sqlx::Error>{
+    async fn provide_identifiers(&mut self, login:&str)->Result<Vec<Uuid>,sqlx::Error>{
         query_as!(Id,"SELECT id FROM pogo_tasks")
             .fetch_all(self as &Self).await
             .map(|v|v.into_iter().map(Uuid::from).collect())
+    }
+    async fn relate_identifiers(&mut self, parent:Self::Identifier, child:Self::Identifier)->Result<(),sqlx::Error>{
+        query!("INSERT INTO pogo_relations VALUES ($1,$2)",parent,child).execute(self as &Self).await?;
+        Ok(())
     }
 }
 
@@ -125,7 +136,7 @@ pub async fn pg_fetch_children_v1<'a,E:PgExecutor<'a>+Copy>(exec:E, id:Uuid)->Re
         .collect();
     Ok(children)
 }
-pub async fn pg_fetch_task_frag_v1<'a, E:PgExecutor<'a>>(exec:E, id:Uuid)->Result<Option<TaskV1Fragment>, sqlx::Error>{
+async fn pg_fetch_task_frag_v1<'a, E:PgExecutor<'a>>(exec:E, id:Uuid)->Result<Option<TaskV1Fragment>, sqlx::Error>{
     Ok(query!(r#"SELECT * FROM pogo_tasks
                                 WHERE id=$1 
                                 AND title IS NOT NULL 
