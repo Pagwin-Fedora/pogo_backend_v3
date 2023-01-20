@@ -22,7 +22,7 @@ use sqlx::prelude::*;
 
 
 fn main() {
-    // initialize the DB before we
+    // initialize the DB before we use it
     let _ = postgres_connection::get_handle();
     let _:Result<(),error_handling::Error> = runtime::get_handle().block_on(async {
         Ok(())
