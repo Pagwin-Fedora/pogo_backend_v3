@@ -1,3 +1,10 @@
+
+// These allows are to suppress a flood of warnings from the end_points module that from what I can
+// tell aren't fixable in this code base
+#![allow(type_alias_bounds)]
+#![allow(opaque_hidden_inferred_bound)]
+
+
 extern crate serde;
 extern crate tokio;
 extern crate warp;
@@ -9,23 +16,15 @@ mod task;
 mod sql_impl;
 mod runtime;
 mod error_handling;
-mod end_point;
+mod end_points;
+mod postgres_connection;
 use sqlx::prelude::*;
 
 
 fn main() {
+    // initialize the DB before we
+    let _ = postgres_connection::get_handle();
     let _:Result<(),error_handling::Error> = runtime::get_handle().block_on(async {
-        let db_opts = sqlx::postgres::PgConnectOptions::new()
-            .host("localhost")
-            .username("sqlx")
-            //once I'm actually getting to work I should probably do this with an env var or a key
-            //store of some kind so I'm not just yeeting the password into the binary
-            .password(include_str!("postgres_passwd"))
-            .port(5432)
-            .database("sqlx")
-            .application_name("pogo");
-        let mut conn:sqlx::postgres::PgPool = sqlx::pool::PoolOptions::new()
-            .connect_with(db_opts).await?;
         Ok(())
     });
     //println!("Hello, world!");
