@@ -3,6 +3,7 @@ use uuid::Uuid;
 use serde::{Serialize,Deserialize};
 use crate::task::TaskEncoder;
 use warp::Filter;
+use warp::reply;
 use crate::error_handling::Error;
 use crate::postgres_connection as pg_conn;
 
@@ -41,7 +42,7 @@ struct TaskSerial{
     parents: Option<Vec<Uuid>>,
     media: Option<Vec<Uuid>>
 }
-async fn update_task(id:Uuid, login:String,update: TaskUpdate) -> EndPointResult<impl Reply>{
+async fn update_task(id:Uuid, login:String,update: TaskSerial) -> EndPointResult<impl Reply>{
     todo!();
     Ok("update task")
 }
@@ -94,4 +95,12 @@ pub fn delete_media_filter()->impl warp::Filter<Extract = impl Reply, Error = Re
         .and(warp::body::json())
         .and(warp::cookie("login"))
         .and_then(delete_media)
+}
+async fn subscribe(content_type:String,login:String)-> impl Reply{
+    reply
+}
+pub fn subscribe_filter()->impl warp::Filter<Extract = impl Reply, Error = Rejection>{
+    warp::get()
+        .map()
+        .and(warp::header("Content-Type"))
 }
