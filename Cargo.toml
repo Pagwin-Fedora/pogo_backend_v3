@@ -13,6 +13,7 @@ tokio = {version = "1.24", features = ["full"]}
 lazy_static = "*"
 uuid = {version = "1.2", features = ["serde"]}
 async-trait = "0.1"
+futures-util = "0.3.25"
 
 # sqlx reccomends this for faster check/debug builds
 [profile.dev.package.sqlx-macros]

@@ -1,12 +1,12 @@
+use crate::error_handling::Error;
+use crate::runtime;
 use lazy_static::lazy_static;
 use sqlx::postgres::PgPool;
-use crate::runtime;
-use crate::error_handling::Error;
-lazy_static!{
-    static ref DB_CONNECTION:PgPool = connect_db().expect("Database connection failed");
+lazy_static! {
+    static ref DB_CONNECTION: PgPool = connect_db().expect("Database connection failed");
 }
 
-fn connect_db()->Result<PgPool,Error>{
+fn connect_db() -> Result<PgPool, Error> {
     runtime::get_handle().block_on(async {
         let db_opts = sqlx::postgres::PgConnectOptions::new()
             .host("localhost")
@@ -17,11 +17,9 @@ fn connect_db()->Result<PgPool,Error>{
             .port(5432)
             .database("sqlx")
             .application_name("pogo");
-        Ok(sqlx::pool::PoolOptions::new()
-            .connect_with(db_opts).await?)
+        Ok(sqlx::pool::PoolOptions::new().connect_with(db_opts).await?)
     })
-
 }
-pub fn get_handle()->PgPool{
+pub fn get_handle() -> PgPool {
     DB_CONNECTION.clone()
 }
