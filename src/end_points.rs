@@ -2,8 +2,9 @@ use crate::error_handling::Error;
 use crate::postgres_connection as pg_conn;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use warp::reply;
+use futures_util::stream;
 use warp::Filter;
+use warp::sse;
 use warp::{Rejection, Reply};
 
 type EndPointResult<R: Reply> = Result<R, Rejection>;
@@ -26,16 +27,22 @@ pub fn create_task_filter() -> impl warp::Filter<Extract = impl Reply, Error = R
 async fn delete_task(id: Uuid, login: String) -> EndPointResult<impl Reply> {
     let db = pg_conn::get_handle();
     //delete
-    let id: Vec<_> = sqlx::query!(
-        "DELETE FROM pogo_tasks WHERE login=$1 AND id=$2 RETURNING id",
+    let id_present:bool = sqlx::query!(
+        "DELETE FROM pogo_tasks WHERE login=$1 AND id=$2",
         login,
         id
     )
-    .fetch_optional(&db)
+    .execute(&db)
     .await
-    .map_err(Error::from)?;
-    //sqlx::query!("DELET")
-    Ok("")
+    .map_err(Error::from)?
+    .rows_affected() > 0;
+    if !id_present {
+        Ok(format!("NON-EXISTENT {}",id))
+    }
+    else{
+        //sqlx::query!("DELET")
+        Ok("")
+    }
 }
 pub fn delete_task_filter() -> impl warp::Filter<Extract = impl Reply, Error = Rejection> {
     warp::delete()
@@ -114,11 +121,12 @@ pub fn delete_media_filter() -> impl warp::Filter<Extract = impl Reply, Error = 
         .and(warp::cookie("login"))
         .and_then(delete_media)
 }
-async fn subscribe(login: String) -> impl Fn() -> impl {
-    ""
+fn subscribe(login: String) -> impl futures_util::Stream<Item = Result<sse::Event, Error>>{
+    stream::iter(vec![])
 }
 pub fn subscribe_filter() -> impl warp::Filter<Extract = impl Reply, Error = Rejection> {
     warp::get()
         .and(warp::path("subscribe"))
-        .map(|| warp::sse::reply(warp::sse::keep_alive().stream()))
+        .and(warp::cookie("login"))
+        .map(|login| sse::reply(sse::keep_alive().stream(subscribe(login))))
 }
