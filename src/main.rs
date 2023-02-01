@@ -3,10 +3,12 @@
 #![allow(type_alias_bounds)]
 #![allow(opaque_hidden_inferred_bound)]
 
+#![feature(try_trait_v2)]
 extern crate async_trait;
 extern crate futures_util;
 extern crate lazy_static;
 extern crate serde;
+extern crate serde_json;
 extern crate sqlx;
 extern crate tokio;
 extern crate uuid;
@@ -17,6 +19,7 @@ mod postgres_connection;
 mod runtime;
 mod sql_impl;
 mod task;
+mod http_ret;
 use sqlx::prelude::*;
 
 fn main() {

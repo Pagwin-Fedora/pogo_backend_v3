@@ -4,6 +4,8 @@ use std::fmt::{Display,Formatter};
 #[derive(Debug)]
 pub enum Error {
     Sql(sqlx::Error),
+    NonExistentTask(uuid::Uuid),
+    WarpError(reject::Rejection),
 }
 
 impl From<sqlx::Error> for Error {
@@ -14,28 +16,30 @@ impl From<sqlx::Error> for Error {
 impl Display for Error{
     fn fmt(&self, fmt:&mut Formatter)->Result<(),std::fmt::Error>{
         match self{
-            Self::Sql(e)=>e.fmt(fmt)
+            Self::Sql(_)=>fmt.write_str("Sql error"),
+            Self::NonExistentTask(u)=> fmt.write_str(format!("{} doesn't exist",u).as_str()),
+            Self::WarpError(_)=> fmt.write_str("Error in Warp")
         }
     }
 }
 impl std::error::Error for Error{
     fn description(&self)->&str{
-        match self{
-            Self::Sql(e)=>e.description()
-        }
+        format!("{}",self).as_str()
     }
     fn cause(&self)->Option<&dyn std::error::Error>{
         match self{
             Self::Sql(e)=>Some(e),
-            _=>None
+            Self::NonExistentTask(_)=>None
         }
     }
     fn source(&self)->Option<&(dyn std::error::Error + 'static)>{
         match self{
-            Self::Sql(e)=>e.source()
+            Self::Sql(e)=>e.source(),
+            Self::NonExistentTask(_)=>None
         }
     }
 }
+
 // this may be bad
 impl reject::Reject for Error {}
 
