@@ -51,15 +51,6 @@ pub fn delete_task_filter() -> impl warp::Filter<Extract = (TaskDeletion,), Erro
         .and_then(delete_task)
 }
 
-#[derive(Serialize, Deserialize)]
-struct TaskSerial {
-    title: Option<String>,
-    body: Option<String>,
-    progress: Option<f32>,
-    children: Option<Vec<Uuid>>,
-    parents: Option<Vec<Uuid>>,
-    media: Option<Vec<Uuid>>,
-}
 
 async fn update_task(id: Uuid, login: String, update: TaskSerial) -> Result<TaskUpdate,Rejection> {
     let conn = pg_conn::get_handle();
@@ -69,8 +60,7 @@ async fn update_task(id: Uuid, login: String, update: TaskSerial) -> Result<Task
     match gotten_id {
         Some(_)=>{
             //no type safety sadly
-            let fields:Vec<TaskFields> = (&update).into()
-            sqlx::query("UPDATE pogo_tasks SET ({})");
+            
             Ok(TaskUpdate)
         },
         None=>Err(error::Error::NonExistentTask(id).into())

@@ -20,6 +20,8 @@ mod runtime;
 mod sql_impl;
 mod task;
 mod http_ret;
+mod update;
+mod serial_task;
 use sqlx::prelude::*;
 
 fn main() {
